@@ -12,7 +12,7 @@ const Header: React.FC = () => {
         <a href="#" className="text-2xl font-bold text-indigo-600">
           Innovate
         </a>
-        <nav className="hidden md:flex items-center space-x-8">
+        <nav className="hidden md:flex items-center space-x-8" aria-label="Main navigation">
           {NAV_LINKS.map((link) => (
             <a key={link.label} href={link.href} className="text-gray-600 hover:text-indigo-600 transition-colors">
               {link.label}
@@ -25,13 +25,19 @@ const Header: React.FC = () => {
             </a>
         </div>
         <div className="md:hidden">
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-800 focus:outline-none">
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)} 
+            className="text-gray-800 focus:outline-none"
+            aria-controls="mobile-menu"
+            aria-expanded={isMenuOpen}
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+          >
             {isMenuOpen ? <XIcon /> : <MenuIcon />}
           </button>
         </div>
       </div>
       {/* Mobile Menu */}
-      <div className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'} bg-white absolute top-full left-0 w-full shadow-md`}>
+      <div id="mobile-menu" className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'} bg-white absolute top-full left-0 w-full shadow-md`}>
         <div className="flex flex-col items-center space-y-4 py-4">
           {NAV_LINKS.map((link) => (
             <a key={link.label} href={link.href} onClick={() => setIsMenuOpen(false)} className="text-gray-600 hover:text-indigo-600 transition-colors py-2">

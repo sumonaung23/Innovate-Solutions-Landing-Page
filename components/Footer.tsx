@@ -1,3 +1,4 @@
+
 import React, { useState, FormEvent } from 'react';
 import { NAV_LINKS } from '../constants';
 
@@ -59,16 +60,18 @@ const Footer: React.FC = () => {
           </div>
           <div>
             <h4 className="text-lg font-semibold">Quick Links</h4>
-            <ul className="mt-4 space-y-2">
-              {NAV_LINKS.map((link) => (
-                <li key={link.label}>
-                  <a href={link.href} className="text-gray-400 hover:text-white transition-colors">{link.label}</a>
-                </li>
-              ))}
-               <li>
-                  <a href="#contact" className="text-gray-400 hover:text-white transition-colors">Contact</a>
-                </li>
-            </ul>
+            <nav aria-label="Footer">
+              <ul className="mt-4 space-y-2">
+                {NAV_LINKS.map((link) => (
+                  <li key={link.label}>
+                    <a href={link.href} className="text-gray-400 hover:text-white transition-colors">{link.label}</a>
+                  </li>
+                ))}
+                <li>
+                    <a href="#contact" className="text-gray-400 hover:text-white transition-colors">Contact</a>
+                  </li>
+              </ul>
+            </nav>
           </div>
           <div>
             <h4 className="text-lg font-semibold">Follow Us</h4>
