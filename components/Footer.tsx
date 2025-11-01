@@ -1,8 +1,43 @@
-
-import React from 'react';
+import React, { useState, FormEvent } from 'react';
 import { NAV_LINKS } from '../constants';
 
 const Footer: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const validateEmail = (email: string) => {
+    // Simple regex for email validation
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
+  };
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!email) {
+      setError('Email address is required.');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    // On successful validation
+    setSuccess('Thank you for subscribing!');
+    setEmail('');
+    console.log('Subscribed with:', email);
+    
+    // Clear success message after a few seconds for better UX
+    setTimeout(() => {
+        setSuccess('');
+    }, 3000);
+  };
+
   return (
     <footer id="contact" className="bg-gray-900 text-white">
       <div className="container mx-auto px-6 py-12">
@@ -39,6 +74,33 @@ const Footer: React.FC = () => {
                   <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z" />
                 </svg>
               </a>
+            </div>
+            <div className="mt-6">
+                <h4 className="text-lg font-semibold">Stay Updated</h4>
+                <form className="mt-4" onSubmit={handleSubmit} noValidate>
+                    <label htmlFor="newsletter-email" className="sr-only">Email address</label>
+                    <div className="flex rounded-md shadow-sm">
+                        <input
+                            type="email"
+                            name="email"
+                            id="newsletter-email"
+                            placeholder="Enter your email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="block w-full min-w-0 flex-1 rounded-none rounded-l-md border-gray-600 bg-gray-800 px-3 py-2 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                            aria-describedby="email-error"
+                            aria-invalid={!!error}
+                        />
+                        <button
+                            type="submit"
+                            className="inline-flex items-center rounded-r-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                        >
+                            Subscribe
+                        </button>
+                    </div>
+                </form>
+                {error && <p id="email-error" className="mt-2 text-sm text-red-500">{error}</p>}
+                {success && <p className="mt-2 text-sm text-green-400">{success}</p>}
             </div>
           </div>
         </div>
