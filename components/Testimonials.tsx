@@ -22,7 +22,13 @@ const Testimonials: React.FC = () => {
                 <p>"{testimonial.quote}"</p>
               </blockquote>
               <figcaption className="mt-6 flex items-center">
-                <img src={testimonial.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                <img 
+                  src={testimonial.avatarUrl} 
+                  alt="" 
+                  loading="lazy"
+                  decoding="async"
+                  className="h-12 w-12 rounded-full object-cover" 
+                />
                 <div className="ml-4">
                   <div className="font-semibold text-gray-900">{testimonial.author}</div>
                   <div className="text-sm text-gray-500">{testimonial.role}</div>

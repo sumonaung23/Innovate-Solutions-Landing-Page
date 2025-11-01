@@ -1,27 +1,37 @@
-
 import React, { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
 import { GoogleGenAI, Chat } from '@google/genai';
 import type { ChatMessage } from '../types';
-import { ChatBubbleIcon, PaperAirplaneIcon, XIcon } from './Icons';
+import { ChatBubbleIcon, PaperAirplaneIcon, XIcon, SpeakerWaveIcon, SpeakerXMarkIcon, TrashIcon } from './Icons';
 
 const CHAT_HISTORY_KEY = 'innovate-chat-history';
+const CHAT_MUTE_KEY = 'innovate-chat-muted';
 const MAX_HISTORY_LENGTH = 30; // Store the last 30 messages
+const NOTIFICATION_SOUND_URL = 'data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAwF0AAIC7AAACABAAZGF0YSQAAAAAAP/A/v/7//8A/wD//P/5/+cA';
 
 const ChatWidget: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [isInitialized, setIsInitialized] = useState(false); // To track initial load from localStorage
+    const [isMuted, setIsMuted] = useState(true);
+    const [isInitialized, setIsInitialized] = useState(false);
     const chatSessionRef = useRef<Chat | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
     const chatWindowRef = useRef<HTMLDivElement | null>(null);
+    const notificationSoundRef = useRef<HTMLAudioElement | null>(null);
+    const isMutedRef = useRef(isMuted);
 
-    // Effect to load messages from localStorage on initial render
+    // Effect to update the isMuted ref whenever state changes
+    useEffect(() => {
+        isMutedRef.current = isMuted;
+    }, [isMuted]);
+
+    // Effect to load preferences from localStorage on initial render
     useEffect(() => {
         try {
+            // Load chat history
             const savedMessages = localStorage.getItem(CHAT_HISTORY_KEY);
             if (savedMessages) {
                 const parsedMessages: ChatMessage[] = JSON.parse(savedMessages);
@@ -29,29 +39,40 @@ const ChatWidget: React.FC = () => {
                     setMessages(parsedMessages);
                 }
             }
-        } catch (error) {
-            console.error("Failed to load chat history from localStorage:", error);
-            localStorage.removeItem(CHAT_HISTORY_KEY); // Clear corrupted data
-        }
-        setIsInitialized(true); // Signal that loading is complete
-    }, []); // Runs only on mount
 
-    // Effect to save messages to localStorage whenever they change, after initialization
+            // Load mute preference
+            const savedMutePref = localStorage.getItem(CHAT_MUTE_KEY);
+            // Default to muted if no preference is saved
+            setIsMuted(savedMutePref ? JSON.parse(savedMutePref) : true);
+
+        } catch (error) {
+            console.error("Failed to load settings from localStorage:", error);
+            localStorage.removeItem(CHAT_HISTORY_KEY);
+            localStorage.removeItem(CHAT_MUTE_KEY);
+        }
+        setIsInitialized(true);
+    }, []);
+
+    // Effect to save preferences to localStorage whenever they change
     useEffect(() => {
-        if (!isInitialized) {
-            return; // Don't save until after the initial load
-        }
+        if (!isInitialized) return;
         try {
-            // Get the last N messages to save
-            const messagesToSave = messages.slice(-MAX_HISTORY_LENGTH);
-            localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messagesToSave));
+            if (messages.length > 0) {
+                 // Save messages
+                const messagesToSave = messages.slice(-MAX_HISTORY_LENGTH);
+                localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messagesToSave));
+            } else {
+                localStorage.removeItem(CHAT_HISTORY_KEY);
+            }
+           
+            // Save mute preference
+            localStorage.setItem(CHAT_MUTE_KEY, JSON.stringify(isMuted));
         } catch (error) {
-            console.error("Failed to save chat history to localStorage:", error);
+            console.error("Failed to save settings to localStorage:", error);
         }
-    }, [messages, isInitialized]);
+    }, [messages, isMuted, isInitialized]);
 
-
-    // Initialize Chat Session only once
+    // Effect to initialize Chat Session and Audio
     useEffect(() => {
         if (!chatSessionRef.current) {
             try {
@@ -65,34 +86,26 @@ const ChatWidget: React.FC = () => {
                 chatSessionRef.current = chat;
             } catch (e) {
                 console.error("Failed to initialize chat:", e);
-                 setMessages([
-                    {
-                        sender: 'bot',
-                        text: 'Sorry, the chat service is currently unavailable.',
-                    },
-                ]);
+                 setMessages((prev) => prev.length === 0 ? [{ sender: 'bot', text: 'Sorry, the chat service is currently unavailable.'}] : prev);
             }
+        }
+        if (!notificationSoundRef.current) {
+            notificationSoundRef.current = new Audio(NOTIFICATION_SOUND_URL);
         }
     }, []);
 
-    // Add initial message when chat is opened for the first time
     useEffect(() => {
         if (isOpen && messages.length === 0 && chatSessionRef.current) {
             setMessages([
-                {
-                    sender: 'bot',
-                    text: 'Hello! How can I help you today with Innovate Solutions?',
-                },
+                { sender: 'bot', text: 'Hello! How can I help you today with Innovate Solutions?' },
             ]);
         }
     }, [isOpen, messages.length]);
 
-    // Auto-scroll to the latest message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isLoading]);
     
-    // Focus management for accessibility
     useEffect(() => {
         if (isOpen) {
             inputRef.current?.focus();
@@ -102,27 +115,18 @@ const ChatWidget: React.FC = () => {
     }, [isOpen]);
 
     const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === 'Escape') {
-            setIsOpen(false);
-        } else if (e.key === 'Tab' && chatWindowRef.current) {
-            const focusableElements = Array.from<HTMLElement>(
-                chatWindowRef.current.querySelectorAll(
-                    'button, [href], input, [tabindex]:not([tabindex="-1"])'
-                )
-            );
+        if (e.key === 'Escape') setIsOpen(false);
+        else if (e.key === 'Tab' && chatWindowRef.current) {
+            const focusableElements = Array.from<HTMLElement>(chatWindowRef.current.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])'));
             const firstElement = focusableElements[0];
             const lastElement = focusableElements[focusableElements.length - 1];
 
-            if (e.shiftKey) { // Shift + Tab
-                if (document.activeElement === firstElement) {
-                    lastElement.focus();
-                    e.preventDefault();
-                }
-            } else { // Tab
-                if (document.activeElement === lastElement) {
-                    firstElement.focus();
-                    e.preventDefault();
-                }
+            if (e.shiftKey && document.activeElement === firstElement) {
+                lastElement.focus();
+                e.preventDefault();
+            } else if (!e.shiftKey && document.activeElement === lastElement) {
+                firstElement.focus();
+                e.preventDefault();
             }
         }
     };
@@ -139,6 +143,11 @@ const ChatWidget: React.FC = () => {
 
         try {
             const response = await chatSessionRef.current.sendMessage({ message: currentInput });
+            
+            if (!isMutedRef.current) {
+                notificationSoundRef.current?.play().catch(e => console.error("Error playing sound:", e));
+            }
+            
             const botMessage: ChatMessage = { sender: 'bot', text: response.text };
             setMessages((prev) => [...prev, botMessage]);
         } catch (error) {
@@ -153,39 +162,49 @@ const ChatWidget: React.FC = () => {
         }
     };
 
+    const handleClearHistory = () => {
+        setMessages([]);
+        try {
+            localStorage.removeItem(CHAT_HISTORY_KEY);
+        } catch (error) {
+            console.error("Failed to clear chat history from localStorage:", error);
+        }
+    };
+
     return (
         <div className="fixed bottom-8 right-8 z-[1000]">
-            {/* Chat Window */}
             <div
                 ref={chatWindowRef}
                 id="chat-window"
-                className={`transition-all duration-300 ease-in-out ${
-                    isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-                } w-80 sm:w-96 h-[28rem] sm:h-[32rem] bg-white rounded-lg shadow-2xl flex flex-col border border-gray-200`}
+                className={`transition-all duration-300 ease-in-out ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'} w-80 sm:w-96 h-[28rem] sm:h-[32rem] bg-white rounded-lg shadow-2xl flex flex-col border border-gray-200`}
                 role="dialog"
                 aria-modal="true"
                 aria-hidden={!isOpen}
                 aria-labelledby="chat-heading"
                 onKeyDown={handleKeyDown}
             >
-                {/* Header */}
                 <div className="bg-indigo-600 text-white p-4 rounded-t-lg flex justify-between items-center flex-shrink-0">
                     <h3 id="chat-heading" className="font-semibold text-lg">Chat with us!</h3>
-                    <button onClick={() => setIsOpen(false)} className="text-white hover:text-indigo-100" aria-label="Close chat">
-                        <XIcon />
-                    </button>
+                    <div className="flex items-center gap-2">
+                         <button onClick={() => setIsMuted(prev => !prev)} className="text-white hover:text-indigo-100" aria-label={isMuted ? 'Unmute notifications' : 'Mute notifications'}>
+                           {isMuted ? <SpeakerXMarkIcon/> : <SpeakerWaveIcon/>}
+                        </button>
+                        <button onClick={handleClearHistory} className="text-white hover:text-indigo-100" aria-label="Clear chat history">
+                           <TrashIcon />
+                        </button>
+                        <button onClick={() => setIsOpen(false)} className="text-white hover:text-indigo-100" aria-label="Close chat">
+                            <XIcon />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Messages */}
                 <div className="flex-1 p-4 overflow-y-auto bg-gray-50" role="log" aria-live="polite">
                     <div className="flex flex-col gap-4">
                         {messages.map((msg, index) => (
                             <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div
                                     className={`max-w-[80%] rounded-xl px-4 py-2 shadow-sm ${
-                                        msg.sender === 'user'
-                                            ? 'bg-indigo-500 text-white'
-                                            : 'bg-white text-gray-800 border border-gray-200'
+                                        msg.sender === 'user' ? 'bg-indigo-500 text-white' : 'bg-white text-gray-800 border border-gray-200'
                                     }`}
                                 >
                                     <p className="text-sm break-words">{msg.text}</p>
@@ -196,9 +215,9 @@ const ChatWidget: React.FC = () => {
                             <div className="flex justify-start" role="status" aria-live="polite">
                                 <div className="bg-gray-100 rounded-xl px-4 py-3">
                                     <div className="flex items-center justify-center gap-2" aria-label="Bot is typing">
-                                        <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                                        <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                        <span className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce"></span>
+                                        <span className="h-2 w-2 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                        <span className="h-2 w-2 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                        <span className="h-2 w-2 bg-indigo-600 rounded-full animate-bounce"></span>
                                     </div>
                                 </div>
                             </div>
@@ -207,7 +226,6 @@ const ChatWidget: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Input */}
                 <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg flex-shrink-0">
                     <form onSubmit={handleSubmit} className="flex gap-2">
                         <input
@@ -232,13 +250,10 @@ const ChatWidget: React.FC = () => {
                 </div>
             </div>
 
-            {/* Toggle Button */}
             <button
                 ref={toggleButtonRef}
                 onClick={() => setIsOpen(!isOpen)}
-                className={`transition-all duration-300 ease-in-out ${
-                    isOpen ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'
-                } bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 active:scale-95 absolute bottom-0 right-0`}
+                className={`transition-all duration-300 ease-in-out ${isOpen ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'} bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 active:scale-95 absolute bottom-0 right-0`}
                 aria-label={isOpen ? 'Close chat' : 'Open chat'}
                 aria-controls="chat-window"
                 aria-expanded={isOpen}

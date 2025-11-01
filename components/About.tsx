@@ -57,6 +57,8 @@ const About: React.FC = () => {
             <img
               src="https://picsum.photos/id/20/600/400"
               alt="Team collaborating"
+              loading="lazy"
+              decoding="async"
               className="rounded-lg shadow-xl w-full h-auto object-cover"
             />
           </div>
