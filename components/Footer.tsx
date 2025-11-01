@@ -5,6 +5,7 @@ const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const validateEmail = (email: string) => {
     // Simple regex for email validation
@@ -14,6 +15,8 @@ const Footer: React.FC = () => {
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setError('');
     setSuccess('');
 
@@ -27,15 +30,21 @@ const Footer: React.FC = () => {
       return;
     }
 
-    // On successful validation
-    setSuccess('Thank you for subscribing!');
-    setEmail('');
-    console.log('Subscribed with:', email);
-    
-    // Clear success message after a few seconds for better UX
+    setIsLoading(true);
+
+    // Simulate network request
     setTimeout(() => {
-        setSuccess('');
-    }, 3000);
+      // On successful validation
+      setSuccess('Thank you for subscribing!');
+      setEmail('');
+      console.log('Subscribed with:', email);
+      setIsLoading(false);
+      
+      // Clear success message after a few seconds for better UX
+      setTimeout(() => {
+          setSuccess('');
+      }, 3000);
+    }, 1500); // Simulate a 1.5s delay
   };
 
   return (
@@ -87,15 +96,17 @@ const Footer: React.FC = () => {
                             placeholder="Enter your email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="block w-full min-w-0 flex-1 rounded-none rounded-l-md border-gray-600 bg-gray-800 px-3 py-2 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                            className="block w-full min-w-0 flex-1 rounded-none rounded-l-md border-gray-600 bg-gray-800 px-3 py-2 text-white focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50"
                             aria-describedby="email-error"
                             aria-invalid={!!error}
+                            disabled={isLoading}
                         />
                         <button
                             type="submit"
-                            className="inline-flex items-center rounded-r-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                            disabled={isLoading}
+                            className="inline-flex items-center justify-center rounded-r-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:bg-indigo-400 disabled:cursor-not-allowed"
                         >
-                            Subscribe
+                            {isLoading ? 'Subscribing...' : 'Subscribe'}
                         </button>
                     </div>
                 </form>
