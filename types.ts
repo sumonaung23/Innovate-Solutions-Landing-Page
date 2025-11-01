@@ -1,4 +1,3 @@
-
 import type React from 'react';
 
 export interface NavLink {
@@ -17,4 +16,9 @@ export interface Testimonial {
   author: string;
   role: string;
   avatarUrl: string;
+}
+
+export interface ChatMessage {
+  sender: 'user' | 'bot';
+  text: string;
 }
